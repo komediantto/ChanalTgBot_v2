@@ -1,6 +1,7 @@
 from collections.abc import Generator
 import re
 import traceback
+from typing import Union
 import httpx
 import redis
 from bs4 import BeautifulSoup
@@ -8,6 +9,7 @@ from fake_useragent import UserAgent
 import datetime
 import logging
 from selenium import webdriver
+from mytypes import Post
 from settings import config
 
 
@@ -114,7 +116,7 @@ def get_urgent_information_polling() -> str | None:
         return message
 
 
-def get_info_from_newbryansk():
+def get_info_from_newbryansk() -> Generator[Union[Post, None], None, None]:
     """
     It gets the latest news from the site, checks if the image is in the redis
     database, if not, it adds it to the database and returns the image and the
@@ -164,19 +166,20 @@ def get_info_from_newbryansk():
         for p in text:
             message += p.text
         message += f"\n{hashtags}\n\nИсточник: {url}"
-        if redis.get(image) is not None:
-            if image.encode() not in redis.keys():
-                redis.set(image, message, datetime.timedelta(days=2))
-                yield image, message
+        post = Post(image, "photo", message)
+        if redis.get(post.url) is not None:
+            if post.url.encode() not in redis.keys():
+                redis.set(post.url, post.text, datetime.timedelta(days=2))
+                yield post
             else:
                 yield None
         else:
             logging.info("Новый пост!")
-            redis.set(image, message, datetime.timedelta(days=2))
-            yield image, message
+            redis.set(post.url, post.text, datetime.timedelta(days=2))
+            yield post
 
 
-def get_info_from_ria() -> tuple | None:
+def get_info_from_ria() -> Post | None:
     """
     It gets the latest news from the site, parses it, and returns the image and
     text of the news
@@ -206,9 +209,12 @@ def get_info_from_ria() -> tuple | None:
     soup = BeautifulSoup(result, "lxml")
     video_tags = soup.find("meta", property="og:video")
     if video_tags:
-        image = video_tags.get("content")  # type:ignore
+        image: tuple[str, str] = (video_tags.get("content"), "video")  # type:ignore
     else:
-        image = soup.find("div", class_="media").find("img").get("src")  # type:ignore
+        image: tuple[str, str] = (
+            soup.find("div", class_="media").find("img").get("src"),
+            "photo",
+        )  # type:ignore
     title = soup.find("div", class_="article__title").text  # type:ignore
     text = soup.find_all("div", class_="article__block", limit=2)
     message = f"{title}\n\n"
@@ -216,20 +222,24 @@ def get_info_from_ria() -> tuple | None:
         abzac = p.text
         message += abzac + "\n\n"
     message += f"{hashtags_ria}\n\nИсточник: {url}"
-
-    if redis.get(image) is not None:  # type:ignore
-        if image.encode() not in redis.keys():  # type:ignore
-            redis.set(image, message, datetime.timedelta(days=2))  # type:ignore
-            return image, message
+    post = (
+        Post(image[0], "photo", message)
+        if image[1] == "photo"
+        else Post(image[0], "video", message)
+    )
+    if redis.get(post.url) is not None:  # type:ignore
+        if post.url.encode() not in redis.keys():  # type:ignore
+            redis.set(post.url, post.text, datetime.timedelta(days=2))  # type:ignore
+            return post
         else:
             return None
     else:
         logging.info("Новый пост!")
-        redis.set(image, message, datetime.timedelta(days=2))  # type:ignore
-        return image, message
+        redis.set(post.url, post.text, datetime.timedelta(days=2))  # type:ignore
+        return post
 
 
-def get_info_from_bga() -> tuple | None:
+def get_info_from_bga() -> Post | None:
     """
     It gets the latest news from the site, parses it, and returns the image and
     text of the news
@@ -272,25 +282,33 @@ def get_info_from_bga() -> tuple | None:
     video_tags = soup.find_all("iframe")
     text = soup.find("div", class_="c9").find_all(["h2", "p"], limit=5)  # type:ignore
     if video_tags:
-        image = video_tags[0].get("src")
+        image: tuple[str, str] = (video_tags[0].get("src"), "video")
     else:
-        image = soup.find("div", class_="c9").find("img").get("src")  # type:ignore
+        image: tuple[str, str] = (
+            soup.find("div", class_="c9").find("img").get("src"),
+            "photo",
+        )  # type:ignore
     for p in text:
         message += p.text
     message += f"\n\n{hashtags}\n\nИсточник: {url}"
-    if redis.get(image) is not None:  # type:ignore
-        if image.encode() not in redis.keys():  # type:ignore
-            redis.set(image, message, datetime.timedelta(days=2))  # type:ignore
-            return image, message
+    post = (
+        Post(image[0], "photo", message)
+        if image[1] == "photo"
+        else Post(image[0], "video", message)
+    )
+    if redis.get(post.url) is not None:  # type:ignore
+        if post.url.encode() not in redis.keys():  # type:ignore
+            redis.set(post.url, post.text, datetime.timedelta(days=2))  # type:ignore
+            return post
         else:
             return None
     else:
         logging.info("Новый пост!")
-        redis.set(image, message, datetime.timedelta(days=2))  # type:ignore
-        return image, message
+        redis.set(post.url, post.text, datetime.timedelta(days=2))  # type:ignore
+        return post
 
 
-def get_info_from_bryanskobl() -> tuple | None:
+def get_info_from_bryanskobl() -> Post | None:
     """
     It gets the latest news from the site, parses it, and returns the image and
     text of the news
@@ -347,19 +365,20 @@ def get_info_from_bryanskobl() -> tuple | None:
     for p in text:
         message += p.text + "\n"
     message += f"{hashtags}\n\nИсточник: {url}"
+    post = Post(image, "photo", message)
     if redis.get(new_href_url) is not None:
         if new_href_url.encode() not in redis.keys():
             redis.set(new_href_url, message, datetime.timedelta(days=2))
-            return image, message
+            return post
         else:
             return None
     else:
         logging.info("Новый пост!")
         redis.set(new_href_url, message, datetime.timedelta(days=2))
-        return image, message
+        return post
 
 
-def get_info_from_gub() -> Generator:
+def get_info_from_gub() -> Generator[Union[Post, None], None, None]:
     urls = config.GUB_ACS.split(",")
     for url in urls:
         try:
@@ -380,15 +399,11 @@ def get_info_from_gub() -> Generator:
         title = soup.find("div", class_="single_post").find("h1").text  # type:ignore
         video_tags = soup.find_all("iframe")
         if video_tags:
-            image = video_tags[0].get("src")
-            if "vk" in image:
-                image = convert_vk_video_link(image)
+            image = (video_tags[0].get("src"), "video")
+            if "vk" in image[0]:
+                image = (convert_vk_video_link(image), "video")
         else:
-            image = (
-                soup.find("div", class_="thecontent")
-                .find("img")  # type:ignore
-                .get("src")  # type:ignore
-            )
+            image = (soup.find("div", class_="thecontent").find("img").get("src"), "photo")  # type: ignore
         text = soup.find("div", class_="thecontent").find_all(  # type:ignore
             "p", limit=2
         )
@@ -396,19 +411,20 @@ def get_info_from_gub() -> Generator:
         for p in text:
             message += p.text + "\n\n"
         message += f"{hashtags}\n\nИсточник: {url}"
+        post = Post(image[0], "photo", message) if image[1] == "photo" else Post(image[0], "video", message)  # type: ignore
         if redis.get(article) is not None:
             if article.encode() not in redis.keys():
                 redis.set(article, message, datetime.timedelta(days=2))
-                yield image, message
+                yield post
             else:
                 return None
         else:
             logging.info("Новый пост!")
             redis.set(article, message, datetime.timedelta(days=2))
-            yield image, message
+            yield post
 
 
-def get_info_from_brgaz() -> tuple | None:
+def get_info_from_brgaz() -> Post | None:
     url = config.BRGAZ
     try:
         response = httpx.get(url, headers=headers, timeout=60)
@@ -438,19 +454,20 @@ def get_info_from_brgaz() -> tuple | None:
     for p in text:
         message += p.text + "\n\n"
     message += f"{hashtags}\n\nИсточник: {url}"
-    if redis.get(image) is not None:  # type:ignore
-        if image.encode() not in redis.keys():  # type:ignore
-            redis.set(image, message, datetime.timedelta(days=2))  # type:ignore
-            return image, message
+    post = Post(image, "photo", message)  # type: ignore
+    if redis.get(post.url) is not None:  # type:ignore
+        if post.url.encode() not in redis.keys():  # type:ignore
+            redis.set(post.url, post.text, datetime.timedelta(days=2))  # type:ignore
+            return post
         else:
             return None
     else:
         logging.info("Новый пост!")
         redis.set(image, message, datetime.timedelta(days=2))  # type:ignore
-        return image, message
+        return post
 
 
-def get_info_from_bn() -> tuple | None:
+def get_info_from_bn() -> Post | None:
     url = config.BN
     try:
         response = httpx.get(url, headers=headers)
@@ -475,13 +492,14 @@ def get_info_from_bn() -> tuple | None:
     message = f"{title}\n\n"
     for p in text:
         message += p.text + "\n\n"
-    if redis.get(image) is not None:  # type:ignore
-        if image.encode() not in redis.keys():  # type:ignore
-            redis.set(image, message, datetime.timedelta(days=2))  # type:ignore
-            return image, message
+    post = Post(image, "photo", message)
+    if redis.get(post.url) is not None:  # type:ignore
+        if post.url.encode() not in redis.keys():  # type:ignore
+            redis.set(post.url, post.text, datetime.timedelta(days=2))  # type:ignore
+            return post
         else:
             return None
     else:
         logging.info("Новый пост!")
         redis.set(image, message, datetime.timedelta(days=2))  # type: ignore
-        return image, message
+        return post

@@ -3,6 +3,7 @@ import logging
 
 from pyrogram.enums import ParseMode
 from pyrogram.client import Client
+from vk_api import VkApi
 
 from parsing import (
     get_info_from_bga,
@@ -61,131 +62,145 @@ async def send_info_polling(id, client):
 
 async def send_info_newbryansk_polling(id, client):
     logging.warning("Выполняю NEWBR")
-    for thing in get_info_from_newbryansk():
-        try:
-            if thing is not None:
+    for post in get_info_from_newbryansk():
+        if post is not None:
+            try:
                 await client.send_photo(
-                    id, thing[0], caption=thing[1], parse_mode=ParseMode.HTML
+                    id, post.url, caption=post.text, parse_mode=ParseMode.HTML
                 )
-                resend_to_vk()
-        except Exception:
-            if thing is not None:
-                logging.info("Слишком длинное сообщение")
-                await client.send_photo(id, thing[0])
-                await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
+            except Exception:
+                await client.send_photo(id, post.url)
+                await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+            print(config.VK_BR.token)
+            vk_session, vk_group_id = (
+                VkApi(token=config.VK_BR.token),
+                config.VK_BR.group_id,
+            )
+            resend_to_vk(vk_session, vk_group_id, post)
 
 
 async def send_info_ria_polling(id, client):
     logging.warning("Выполняю RIA")
-    thing = get_info_from_ria()
-    if thing is not None:
-        ext = thing[0].split(".")[-1]
+    post = get_info_from_ria()
+    if post is not None:
+        ext = post.url.split(".")[-1]  # type:ignore
         if ext not in photo_ext:
             await client.send_video(
-                id, thing[0], caption=thing[1], parse_mode=ParseMode.HTML
+                id, post.url, caption=post.text, parse_mode=ParseMode.HTML
             )
-            logging.warning("Видео")
         else:
             await client.send_photo(
-                id, thing[0], caption=thing[1], parse_mode=ParseMode.HTML
+                id, post.url, caption=post.text, parse_mode=ParseMode.HTML
             )
-            logging.warning("Photo")
+        for group in [config.VK_MSK, config.VK_SPB]:
+            print(group.token)
+            vk_session, vk_group_id = VkApi(token=group.token), group.group_id
+            resend_to_vk(vk_session, vk_group_id, post)
 
 
 async def send_info_bga_polling(id, client):
     logging.warning("Выполняю БГ")
-    thing = get_info_from_bga()
-    try:
-        if thing is not None:
-            if thing[0] is not None:
+    post = get_info_from_bga()
+    if post is not None:
+        try:
+            if post.url is not None:
                 await client.send_photo(
-                    id, thing[0], caption=thing[1], parse_mode=ParseMode.HTML
+                    id, post.url, caption=post.text, parse_mode=ParseMode.HTML
                 )
             else:
-                await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
-    except Exception:
-        if thing is not None:
-            logging.info("Слишком длинное сообщение")
-            if thing[0] is not None:
-                await client.send_photo(id, thing[0])
-            await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
+                await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+        except Exception:
+            if post.url is not None:
+                await client.send_photo(id, post.url)
+            await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+        logging.warning(config.VK_BR.token)
+        vk_session, vk_group_id = VkApi(token=config.VK_BR.token), config.VK_BR.group_id
+        resend_to_vk(vk_session, vk_group_id, post)
 
 
 async def send_info_bo_polling(id, client):
     logging.warning("Выполняю BO")
-    thing = get_info_from_bryanskobl()
-    try:
-        if thing is not None:
-            if thing[0] is not None:
+    post = get_info_from_bryanskobl()
+    if post is not None:
+        try:
+            if post.url is not None:
                 await client.send_photo(
-                    id, thing[0], caption=thing[1], parse_mode=ParseMode.HTML
+                    id, post.url, caption=post.text, parse_mode=ParseMode.HTML
                 )
             else:
-                await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
-    except Exception:
-        if thing is not None:
-            logging.info("Слишком длинное сообщение")
-            await client.send_photo(id, thing[0])
-            await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
+                await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+        except Exception:
+            await client.send_photo(id, post.url)
+            await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+        logging.warning(config.VK_BR.token)
+        vk_session, vk_group_id = VkApi(token=config.VK_BR.token), config.VK_BR.group_id
+        resend_to_vk(vk_session, vk_group_id, post)
 
 
 async def send_info_gub_polling(id, client):
     logging.warning("Выполняю GUB")
-    for thing in get_info_from_gub():
-        try:
-            if thing is not None:
-                if thing[0] is not None:
-                    ext = thing[0].split(".")[-1]
+    for post in get_info_from_gub():
+        if post is not None:
+            try:
+                if post.url is not None:
+                    ext = post.url.split(".")[-1]
                     if ext not in photo_ext:
                         await client.send_video(
                             id,
-                            thing[0],
-                            caption=thing[1],
+                            post.url,
+                            caption=post.text,
                             parse_mode=ParseMode.HTML,
                         )
                     else:
                         await client.send_photo(
                             id,
-                            thing[0],
-                            caption=thing[1],
+                            post.url,
+                            caption=post.text,
                             parse_mode=ParseMode.HTML,
                         )
                 else:
-                    await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
-        except Exception:
-            logging.info("Слишком длинное сообщение")
-            await client.send_photo(id, thing[0])
-            await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
+                    await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+            except Exception:
+                await client.send_photo(id, post.url)
+                await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+            logging.warning(config.VK_BR.token)
+            vk_session, vk_group_id = (
+                VkApi(token=config.VK_BR.token),
+                config.VK_BR.group_id,
+            )
+            resend_to_vk(vk_session, vk_group_id, post)
 
 
 async def send_info_brgaz_polling(id, client):
     logging.warning("Выполняю BRGAZ")
-    thing = get_info_from_brgaz()
-    try:
-        if thing is not None:
+    post = get_info_from_brgaz()
+    if post is not None:
+        try:
             await client.send_photo(
-                id, thing[0], caption=thing[1], parse_mode=ParseMode.HTML
+                id, post.url, caption=post.text, parse_mode=ParseMode.HTML
             )
-    except Exception:
-        if thing is not None:
-            logging.info("Слишком длинное сообщение")
-            await client.send_photo(id, thing[0])
-            await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
+        except Exception:
+            await client.send_photo(id, post.url)
+            await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+        logging.warning(config.VK_BR.token)
+        vk_session, vk_group_id = VkApi(token=config.VK_BR.token), config.VK_BR.group_id
+        resend_to_vk(vk_session, vk_group_id, post)
 
 
 async def send_info_bn_polling(id, client):
     logging.warning("Выполняю BN")
-    thing = get_info_from_bn()
-    try:
-        if thing is not None:
+    post = get_info_from_bn()
+    if post is not None:
+        try:
             await client.send_photo(
-                id, thing[0], caption=thing[1], parse_mode=ParseMode.HTML
+                id, post.url, caption=post.text, parse_mode=ParseMode.HTML
             )
-    except Exception:
-        if thing is not None:
-            logging.info("Слишком длинное сообщение")
-            await client.send_photo(id, thing[0])
-            await client.send_message(id, thing[1], parse_mode=ParseMode.HTML)
+        except Exception:
+            await client.send_photo(id, post.url)
+            await client.send_message(id, post.text, parse_mode=ParseMode.HTML)
+        logging.warning(config.VK_BR.token)
+        vk_session, vk_group_id = VkApi(token=config.VK_BR.token), config.VK_BR.group_id
+        resend_to_vk(vk_session, vk_group_id, post)
 
 
 async def job(fid, mid):

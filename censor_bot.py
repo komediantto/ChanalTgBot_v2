@@ -24,17 +24,18 @@ async def censorship(message: types.Message):
     :type message: types.Message
     """
     logging.warning("Check!")
-    raw_message = message.text.replace("\n", " ")
-    data = json.load(open("forbidden_words.json", encoding="utf-8"))
-    profanity_list = []
-    for i in data:
-        profanity_list.append(i["word"])
-    if {
-        i.lower().translate(str.maketrans("", "", string.punctuation))
-        for i in raw_message.split(" ")
-    }.intersection(set(profanity_list)) != set():
-        await message.reply("Маты запрещены")
-        await message.delete()
+    if message.text:
+        raw_message = message.text.replace("\n", " ")
+        data = json.load(open("forbidden_words.json", encoding="utf-8"))
+        profanity_list = []
+        for i in data:
+            profanity_list.append(i["word"])
+        if {
+            i.lower().translate(str.maketrans("", "", string.punctuation))
+            for i in raw_message.split(" ")
+        }.intersection(set(profanity_list)) != set():
+            await message.reply("Маты запрещены")
+            await message.delete()
 
 
 dp.include_router(router)
