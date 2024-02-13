@@ -5,5 +5,8 @@ services:
     build: .
     volumes:
       - .:/bot
+    stdin_open: true # docker run -i
+    tty: true
+    restart: always
   redis:
     image: "redis:alpine"

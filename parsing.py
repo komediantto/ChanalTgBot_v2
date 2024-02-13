@@ -98,7 +98,7 @@ def get_urgent_information_polling() -> str | None:
 
     result = response.text
     soup = BeautifulSoup(result, "lxml")
-    text = soup.find("div", itemprop="articleBody").find_all("p", limit=15)  # type: ignore
+    text = soup.find("article", itemprop="articleBody").find_all("p", limit=15)  # type: ignore
     message = f"{title}\n\n"
     for p in text:
         message += p.text
@@ -386,7 +386,9 @@ def get_info_from_gub() -> Generator[Union[Post, None], None, None]:
             result = response.text
             soup = BeautifulSoup(result, "lxml")
             article: str = (
-                soup.find("div", class_="article").find("a").get("href")  # type:ignore
+                soup.find("article", class_="article")
+                .find("a")
+                .get("href")  # type:ignore
             )
             response = httpx.get(article, headers=headers)
         except Exception as e:
@@ -399,17 +401,17 @@ def get_info_from_gub() -> Generator[Union[Post, None], None, None]:
         title = soup.find("div", class_="single_post").find("h1").text  # type:ignore
         video_tags = soup.find_all("iframe")
         if video_tags:
-            image = (video_tags[0].get("src"), "video")
+            image = ("https://guberniya.tv" + video_tags[0].get("src"), "video")
             if "vk" in image[0]:
                 image = (convert_vk_video_link(image), "video")
         else:
-            image = (soup.find("div", class_="thecontent").find("img").get("src"), "photo")  # type: ignore
+            image = ("https://guberniya.tv" + soup.find("div", class_="thecontent").find("img").get("src"), "photo")  # type: ignore
         text = soup.find("div", class_="thecontent").find_all(  # type:ignore
             "p", limit=2
         )
-        message = f"{title}\n\n"
+        message = f"{title}\n"
         for p in text:
-            message += p.text + "\n\n"
+            message += p.text + "\n"
         message += f"{hashtags}\n\nИсточник: {url}"
         post = Post(image[0], "photo", message) if image[1] == "photo" else Post(image[0], "video", message)  # type: ignore
         if redis.get(article) is not None:

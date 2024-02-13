@@ -10,9 +10,9 @@ def resend_to_vk(vk_session, vk_group_id, post: Post):
     vk = vk_session.get_api()
     vk_upload = VkUpload(vk)
 
-    img = requests.get(post.url).content  # type: ignore
-    f = BytesIO(img)
     if post.url:
+        img = requests.get(post.url).content  # type: ignore
+        f = BytesIO(img)
         try:
             if post.type == "photo":
                 response = vk_upload.photo_wall(f, group_id=vk_group_id * -1)[0]

@@ -64,6 +64,7 @@ async def send_info_newbryansk_polling(id, client):
     logging.warning("Выполняю NEWBR")
     for post in get_info_from_newbryansk():
         if post is not None:
+            logging.warning(post)
             try:
                 await client.send_photo(
                     id, post.url, caption=post.text, parse_mode=ParseMode.HTML
@@ -82,6 +83,7 @@ async def send_info_newbryansk_polling(id, client):
 async def send_info_ria_polling(id, client):
     logging.warning("Выполняю RIA")
     post = get_info_from_ria()
+    logging.warning(post)
     if post is not None:
         ext = post.url.split(".")[-1]  # type:ignore
         if ext not in photo_ext:
@@ -101,6 +103,7 @@ async def send_info_ria_polling(id, client):
 async def send_info_bga_polling(id, client):
     logging.warning("Выполняю БГ")
     post = get_info_from_bga()
+    logging.warning(post)
     if post is not None:
         try:
             if post.url is not None:
@@ -121,6 +124,7 @@ async def send_info_bga_polling(id, client):
 async def send_info_bo_polling(id, client):
     logging.warning("Выполняю BO")
     post = get_info_from_bryanskobl()
+    logging.warning(post)
     if post is not None:
         try:
             if post.url is not None:
@@ -141,6 +145,7 @@ async def send_info_gub_polling(id, client):
     logging.warning("Выполняю GUB")
     for post in get_info_from_gub():
         if post is not None:
+            logging.warning(post)
             try:
                 if post.url is not None:
                     ext = post.url.split(".")[-1]
@@ -174,6 +179,7 @@ async def send_info_gub_polling(id, client):
 async def send_info_brgaz_polling(id, client):
     logging.warning("Выполняю BRGAZ")
     post = get_info_from_brgaz()
+    logging.warning(post)
     if post is not None:
         try:
             await client.send_photo(
@@ -190,6 +196,7 @@ async def send_info_brgaz_polling(id, client):
 async def send_info_bn_polling(id, client):
     logging.warning("Выполняю BN")
     post = get_info_from_bn()
+    logging.warning(post)
     if post is not None:
         try:
             await client.send_photo(
@@ -231,3 +238,4 @@ async def start():
         misfire_grace_time=None,
         max_instances=2,
     )
+    scheduler.start()
