@@ -162,3 +162,4 @@ cython_debug/
 vkbot/
 *.session
 *.log
+:memory:.session
