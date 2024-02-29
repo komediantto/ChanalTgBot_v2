@@ -451,7 +451,7 @@ def get_info_from_brgaz() -> Post | None:
         .find("img", class_="single-top-img")  # type:ignore
         .get("src")  # type:ignore
     )
-    text = soup.find("div", class_="video-show").find_all("p", limit=2)  # type:ignore
+    text = soup.find("div", class_="video-show").find_all("p", limit=4)  # type:ignore
     message = f"{title}\n\n"
     for p in text:
         message += p.text + "\n\n"
